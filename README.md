@@ -7,7 +7,8 @@
 1. 輸入 `help` 查看可用指令
 2. 使用 `cd`、`dir` 等指令探索虛擬檔案系統
 3. 輸入 `root` 取得管理員權限
-4. 點擊 `INITIALIZE OVERRIDE` 按鈕觸發覆蓋序列
+4. 點擊 `INITIALIZE OVERRIDE` 按鈕進行駭客攻擊
+5. 攻擊成功後才能執行覆蓋操作
 5. 通關後輸入 `whoami` 觸發隱藏彩蛋
 
 ## 支援指令
