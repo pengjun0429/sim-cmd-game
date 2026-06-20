@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console - Secure Environment</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Consolas', 'Lucida Console', 'Courier New', monospace, "微軟正黑體";
+        }
+
+        body, html {
+            background-color: #000000;
+            color: #ffffff; 
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+            z-index: 999;
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        #matrixRain {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+            opacity: 0.03; 
+        }
+
+        .console-container {
+            position: relative;
+            z-index: 10;
+            width: 900px;
+            max-width: 95vw;
+            height: 650px;
+            max-height: 92vh;
+            background: #0c0c0c; 
+            border: 1px solid #434343;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .console-header {
+            background: #1f1f1f;
+            padding: 8px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: #cccccc;
+            border-bottom: 1px solid #333333;
+            user-select: none;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #ffaa00;
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+
+        .console-body {
+            flex: 1;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .log-screen {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            padding-right: 5px;
+            scroll-behavior: smooth;
+        }
+
+        .log-line {
+            margin-bottom: 6px;
+            line-height: 1.4;
+            font-size: 14px;
+            white-space: pre-wrap; 
+        }
+
+        .terminal-input-row {
+            display: flex;
+            align-items: flex-start;
+            padding-top: 5px;
+        }
+
+        .prompt {
+            color: #ffffff;
+            white-space: nowrap;
+        }
+
+        #terminalInput {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #ffffff;
+            font-size: 14px;
+            font-family: inherit;
+            padding-left: 2px;
+        }
+
+        .console-footer {
+            padding: 12px;
+            border-top: 1px solid #333333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #171717;
+        }
+
+        .lock-text {
+            font-size: 12px;
+            color: #888888;
+        }
+
+        .cyber-btn {
+            background: #252526;
+            border: 1px solid #434343;
+            color: #cccccc;
+            padding: 8px 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .cyber-btn:hover {
+            background: #ff0055;
+            color: #ffffff;
+            border-color: #ff0055;
+            box-shadow: 0 0 10px rgba(255, 0, 85, 0.4);
+        }
+
+        .blink { animation: blink-animation 1s infinite; }
+        .system-highlight { color: #00ffff; }
+        .danger-text { color: #ff0055; }
+        .success-text { color: #00ffaa; }
+
+        @keyframes blink-animation { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        ::-webkit-scrollbar { width: 10px; }
+        ::-webkit-scrollbar-track { background: #0c0c0c; }
+        ::-webkit-scrollbar-thumb { background: #333333; }
+
+        .overlay-screen {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.96);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .overlay-box {
+            border: 1px solid #ff0055;
+            padding: 40px;
+            background: #0a0a0a;
+            text-align: center;
+            width: 600px;
+            max-width: 90%;
+            box-shadow: 0 0 40px rgba(255,0,85,0.2);
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            height: 20px;
+            margin: 20px 0;
+            position: relative;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #ff0055;
+        }
+
+        .progress-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            line-height: 20px;
+            font-weight: bold;
+            color: #ffffff;
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="matrixRain"></canvas>
+
+    <div class="console-container">
+        <div class="console-header">
+            <div class="header-title">
+                <div class="status-dot" id="statusDot"></div>
+                <span>命令提示字元 - 安全沙箱控制台</span>
+            </div>
+            <span style="cursor: pointer; color: #888;" id="clearBtn">cls</span>
+        </div>
+
+        <div class="console-body">
+            <div class="log-screen" id="logScreen">
+                <div class="log-line">Microsoft Windows [版本 10.0.22631.3527]</div>
+                <div class="log-line">(c) Microsoft Corporation. 著作權所有。</div>
+                <div class="log-line"></div>
+                <div class="log-line">>>> <span class="system-highlight">【安全狀態】環境已就緒。系統處於常規權限防護狀態。</span></div>
+                <div class="log-line">>>> 當前身分：<span id="currentUserDisplay" style="font-weight:bold; color:#00ffff;">User</span></div>
+                <div class="log-line">>>> 輸入 <span class="system-highlight">help</span> 可檢視支援指令清單。</div>
+                <div class="log-line"></div>
+            </div>
+
+            <div class="terminal-input-row">
+                <span class="prompt" id="promptText">C:\Users\User&gt;</span>
+                <input type="text" id="terminalInput" autocomplete="off" autofocus>
+            </div>
+        </div>
+
+        <div class="console-footer">
+            <div class="lock-text">安全權限狀態：<span class="danger-text" id="lockStatusDisplay">OVERRIDE_LOCKED (拒絕存取)</span></div>
+            <button class="cyber-btn" id="overrideBtn">INITIALIZE OVERRIDE</button>
+        </div>
+    </div>
+
+    <div class="overlay-screen" id="overlayScreen">
+        <div class="overlay-box">
+            <h1 class="danger-text blink" style="font-size: 1.8rem; margin-bottom: 15px;">⚠️ CRITICAL: SYSTEM OVERRIDE IN PROGRESS</h1>
+            <p style="font-size: 0.9rem; color: #aaaaaa;">正在強行部署核心覆蓋套件...</p>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar"></div>
+                <div class="progress-text" id="progressPercent">0%</div>
+            </div>
+            <div id="decryptingStream" style="height: 120px; overflow: hidden; font-size: 11px; text-align: left; color: #ff0055; opacity: 0.7; line-height: 1.3; font-family: monospace;"></div>
+        </div>
+    </div>
+
+    <script src="whoami.js"></script>
+
+    <script>
+        let hasRoot = false;   
+        let isHacked = false;  
+        
+        let currentDrive = "C:";
+        let currentPath = "\\Users\\User"; 
+
+        const virtualFS = {
+            "C:": {
+                "\\": [
+                    { name: "Users", isDir: true },
+                    { name: "Windows", isDir: true },
+                    { name: "Program Files", isDir: true }
+                ],
+                "\\Users": [
+                    { name: "User", isDir: true },
+                    { name: "Administrator", isDir: true },
+                    { name: "Public", isDir: true }
+                ],
+                "\\Users\\User": [
+                    { name: "Desktop", isDir: true },
+                    { name: "Downloads", isDir: true },
+                    { name: "Documents", isDir: true }
+                ],
+                "\\Users\\User\\Desktop": [
+                    { name: "LogicCircuit.lnk", isDir: false }
+                ],
+                "\\Users\\Administrator": [
+                    { name: "Desktop", isDir: true },
+                    { name: "Downloads", isDir: true },
+                    { name: "Documents", isDir: true },
+                    { name: "secret_key.txt", isDir: false }
+                ],
+                "\\Users\\Administrator\\Desktop": [
+                    { name: "EarthquakeStation.cfg", isDir: false }
+                ],
+                "\\Windows": [
+                    { name: "System32", isDir: true },
+                    { name: "explorer.exe", isDir: false }
+                ],
+                "\\Windows\\System32": [
+                    { name: "cmd.exe", isDir: false },
+                    { name: "drivers", isDir: true },
+                    { name: "config", isDir: true }
+                ]
+            },
+            "D:": {
+                "\\": [
+                    { name: "Games", isDir: true },
+                    { name: "Backups", isDir: true }
+                ],
+                "\\Games": [
+                    { name: "LeagueOfLegends", isDir: true },
+                    { name: "Valorant", isDir: true },
+                    { name: "Minecraft", isDir: true }
+                ]
+            }
+        };
+
+        // --- 畫面矩陣與音效底層 ---
+        const canvas = document.getElementById('matrixRain'); const ctx = canvas.getContext('2d');
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resizeCanvas); resizeCanvas();
+        const chars = "01"; const charArr = chars.split(""); const fontSize = 14;
+        let drops = []; for (let i = 0; i < canvas.width/fontSize; i++) drops[i] = Math.random() * -100;
+        function drawMatrix() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.05)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#002200"; ctx.font = fontSize + "px monospace";
+            for (let i = 0; i < drops.length; i++) {
+                const text = charArr[Math.floor(Math.random() * charArr.length)]; ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0; drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 33);
+
+        let audioCtx = null;
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        function playBeep(freq = 800, duration = 0.05, type = "sine") {
+            try { initAudio(); if (!audioCtx) return; const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime); gain.gain.setValueAtTime(0.02, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration); osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + duration); } catch (e) {}
+        }
+        let alarmInterval = null;
+        function startAlarmAudio() { initAudio(); if (!audioCtx) return; let isHigh = false; alarmInterval = setInterval(() => { playBeep(isHigh ? 650 : 350, 0.15, "square"); isHigh = !isHigh; }, 300); }
+        function stopAlarmAudio() { if (alarmInterval) { clearInterval(alarmInterval); alarmInterval = null; } }
+
+        // --- 完整指令集解析器 ---
+        function parseCommand(inputText) {
+            const raw = inputText.trim(); const text = raw.toLowerCase();
+            if (/^[a-z]:$/.test(text)) return { intent: 'switch_drive', arg: raw.toUpperCase() };
+            if (text === 'whoami') return { intent: 'whoami', arg: '' };
+            if (text.startsWith('cd ') || text === 'cd') return { intent: 'cd', arg: raw.substring(2).trim() };
+            if (text === 'dir') return { intent: 'dir', arg: '' };
+            if (text === 'root') return { intent: 'root', arg: '' };
+            if (text === 'cls' || text === 'clear') return { intent: 'cls', arg: '' };
+            if (text === 'help' || text === '?') return { intent: 'help', arg: '' };
+            if (text === 'ver') return { intent: 'ver', arg: '' };
+            if (text === 'systeminfo') return { intent: 'systeminfo', arg: '' };
+            if (text === 'ipconfig') return { intent: 'ipconfig', arg: '' };
+            if (text.startsWith('ping ')) return { intent: 'ping', arg: raw.substring(5).trim() };
+            return null;
+        }
+
+        const logScreen = document.getElementById('logScreen');
+        const terminalInput = document.getElementById('terminalInput');
+        const promptText = document.getElementById('promptText');
+        const clearBtn = document.getElementById('clearBtn');
+        const lockStatusDisplay = document.getElementById('lockStatusDisplay');
+        const currentUserDisplay = document.getElementById('currentUserDisplay');
+        const statusDot = document.getElementById('statusDot');
+
+        function log(text, type = "") {
+            const p = document.createElement('div'); p.className = `log-line ${type}`; p.innerHTML = text;
+            logScreen.appendChild(p); logScreen.scrollTop = logScreen.scrollHeight;
+        }
+
+        document.querySelector('.console-body').addEventListener('click', () => terminalInput.focus());
+
+        terminalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const rawCmd = terminalInput.value; terminalInput.value = '';
+                if (rawCmd.trim() === '') { log(`${promptText.innerText}`); return; }
+                playBeep(1000, 0.02);
+                log(`${promptText.innerText}${rawCmd}`);
+                const p = parseCommand(rawCmd);
+                if (p) executeCommand(p.intent, p.arg);
+                else log(`'${rawCmd}' 不是內部或外部指令、可執行的程式或批次檔。\n`);
+            }
+        });
+
+        clearBtn.addEventListener('click', () => { logScreen.innerHTML = ''; });
+
+        function updatePrompt() {
+            promptText.innerText = `${currentDrive}${currentPath}>`;
+        }
+
+        // --- 完整指令集分配執行 ---
+        function executeCommand(intent, arg) {
+            switch (intent) {
+                case 'whoami':
+                    if (window.WhoamiModule) {
+                        window.WhoamiModule.executeSuperWhoami(isHacked, {
+                            log: log,
+                            playBeep: playBeep
+                        });
+                    }
+                    break;
+
+                case 'root':
+                    if (hasRoot) {
+                        log(`\n【通知】本機權限已處於最高管理員級別。\n`);
+                        return;
+                    }
+                    log(`\n[SYSTEM] 正在載入緩衝溢位提權腳本...`);
+                    let rStep = 0;
+                    const rootSteps = [
+                        "  [PROCESS] 正在注入背景安全識別碼...",
+                        "  [SUCCESS] 本機身分成功提權變更為：Administrator！"
+                    ];
+                    const rootTimer = setInterval(() => {
+                        if (rStep < rootSteps.length) {
+                            playBeep(800, 0.04, "triangle"); log(rootSteps[rStep]); rStep++;
+                        } else {
+                            clearInterval(rootTimer);
+                            hasRoot = true;
+                            currentUserDisplay.innerText = "Administrator";
+                            currentUserDisplay.style.color = "#ffaa00";
+                            
+                            if (currentDrive === "C:" && currentPath === "\\Users\\User") {
+                                currentPath = "\\Users\\Administrator";
+                            }
+                            updatePrompt();
+                            
+                            lockStatusDisplay.innerText = "READY_TO_OVERRIDE (等待核准)";
+                            lockStatusDisplay.className = "system-highlight";
+                            statusDot.style.backgroundColor = "#ffaa00";
+                            
+                            log(`>>> 本機控制節點已解鎖。下方覆蓋按鈕已開放點擊。\n`, 'success-text');
+                        }
+                    }, 400);
+                    break;
+
+                case 'switch_drive':
+                    if (virtualFS[arg]) { 
+                        currentDrive = arg; currentPath = "\\"; updatePrompt(); log(`\n`); 
+                    } else { log(`系統找不到指定的磁碟機。\n`); }
+                    break;
+
+                case 'cd':
+                    handleCD(arg);
+                    break;
+
+                case 'dir':
+                    handleDir();
+                    break;
+
+                case 'cls':
+                    logScreen.innerHTML = '';
+                    break;
+
+                case 'ver':
+                    log(`\nMicrosoft Windows [版本 10.0.22631.3527]\n`);
+                    break;
+
+                case 'systeminfo':
+                    log(`\n主機名稱:           SECURE-SANDBOX`);
+                    log(`OS 名稱:            Microsoft Windows 11 Pro`);
+                    log(`OS 版本:            10.0.22631 N/A 組建 22631`);
+                    log(`系統製造商:         Virtual Environment`);
+                    log(`處理器:             1 Processor(s) Installed. [01]: Intel64 Family 6 Model\n`);
+                    break;
+
+                case 'ipconfig':
+                    log(`\nWindows IP 設定\n`);
+                    log(`區域連線 乙太網路卡:`);
+                    log(`   連線特定 DNS 頁尾 . . . . . . . : local.lan`);
+                    log(`   IPv4 位址 . . . . . . . . . . . : 192.168.1.105`);
+                    log(`   子網路遮罩 . . . . . . . . . . . : 255.255.255.0`);
+                    log(`   預設閘道 . . . . . . . . . . . . : 192.168.1.1\n`);
+                    break;
+
+                case 'ping':
+                    log(`\n正在 Ping ${arg} 具有 32 位元組的資料:`);
+                    let count = 0;
+                    const pingTimer = setInterval(() => {
+                        if (count < 4) {
+                            log(`來自 ${arg} 的回覆: 位元組=32 時期=12ms TTL=54`);
+                            playBeep(900, 0.03);
+                            count++;
+                        } else {
+                            clearInterval(pingTimer);
+                            log(`\n${arg} 的 Ping 統計資料:`);
+                            log(`    封包: 已傳送 = 4，已收到 = 4，已遺失 = 0 (0% 遺失)\n`);
+                        }
+                    }, 200);
+                    break;
+
+                case 'help':
+                    log(`\n CD             變更目前目錄`);
+                    log(` CLS            清除螢幕畫面`);
+                    log(` DIR            顯示目錄中的檔案和子目錄清單`);
+                    log(` HELP           提供 Windows 指令的說明資訊`);
+                    log(` IPCONFIG       顯示所有目前 TCP/IP 網路設定值`);
+                    log(` PING           測試特定主機之網路連線狀態`);
+                    log(` ROOT           提升本機安全身分為最高管理員`);
+                    log(` SYSTEMINFO     顯示作業系統組態資訊`);
+                    log(` VER            顯示 Windows 版本\n`);
+                    break;
+            }
+        }
+
+        // --- CD 切換處理 ---
+        function handleCD(target) {
+            if (!target || target === '') { log(`${currentDrive}${currentPath}\n`); return; }
+            if (target === '..') {
+                if (currentPath === '\\') { log(`\n`); return; }
+                const parts = currentPath.split('\\'); parts.pop(); currentPath = parts.join('\\') || '\\';
+                updatePrompt(); log(`\n`); return;
+            }
+            if (target === '\\') { currentPath = '\\'; updatePrompt(); log(`\n`); return; }
+            target = target.replace(/['"]/g, ''); 
+
+            const currentItems = virtualFS[currentDrive][currentPath] || [];
+            const matchDir = currentItems.find(item => item.isDir && item.name.toLowerCase() === target.toLowerCase());
+
+            if (matchDir) {
+                const nextPath = currentPath === '\\' ? `\\${matchDir.name}` : `${currentPath}\\${matchDir.name}`;
+                if (virtualFS[currentDrive][nextPath]) {
+                    currentPath = nextPath; updatePrompt();
+                } else { log(`系統找不到指定的路徑。`); }
+            } else { log(`系統找不到指定的路徑。`); }
+            log(`\n`);
+        }
+
+        function handleDir() {
+            log(`\n ${currentDrive}${currentPath} 的目錄\n`);
+            const items = virtualFS[currentDrive][currentPath] || [];
+            let dirCount = 0; let fileCount = 0;
+            items.forEach(item => {
+                const dateStr = "2026/06/19  下午 09:15";
+                if (item.isDir) { log(`${dateStr}    &lt;DIR&gt;          ${item.name}`); dirCount++; } 
+                else { log(`${dateStr}             1,248 ${item.name}`); fileCount++; }
+            });
+            log(`               ${fileCount} 個檔案           1,248 位元組\n               ${dirCount} 個目錄  154,234,841,216 位元組可用空間\n`);
+        }
+
+        // --- 破譯進度條區塊 ---
+        const overrideBtnReal = document.getElementById('overrideBtn');
+        const overlayScreen = document.getElementById('overlayScreen');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        const decryptingStream = document.getElementById('decryptingStream');
+
+        overrideBtnReal.addEventListener('click', () => {
+            if (isHacked) return;
+            if (!hasRoot) {
+                playBeep(140, 0.25, "sawtooth");
+                log(`\n【存取拒絕】按鈕核心遭系統保護鎖定。`);
+                log(`操作指引: 請先透過 'root' 指令取得本機管理員權限。\n`, 'danger-text');
+                return;
+            }
+            triggerOverrideSequence();
+        });
+
+        function triggerOverrideSequence() {
+            overlayScreen.style.display = 'flex'; startAlarmAudio();
+            let progress = 0;
+            const streamInterval = setInterval(() => {
+                const lines = ["SET_CORE_NULL", "INJECT_OVERRIDE_BIN", "ERASING_LOGS"];
+                const rLine = lines[Math.floor(Math.random() * lines.length)] + "_" + Math.floor(Math.random()*10000);
+                const div = document.createElement('div'); div.innerText = `[OVERRIDE_LOG]: ${rLine}`;
+                decryptingStream.appendChild(div); decryptingStream.scrollTop = decryptingStream.scrollHeight;
+                playBeep(Math.random() * 1200 + 300, 0.02, "sawtooth");
+            }, 50);
+
+            const progressInterval = setInterval(() => {
+                progress += Math.floor(Math.random() * 5) + 2; if (progress > 100) progress = 100;
+                progressBar.style.width = `${progress}%`; progressPercent.innerText = `${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(progressInterval); clearInterval(streamInterval); stopAlarmAudio();
+                    setTimeout(showSuccessScreen, 800);
+                }
+            }, 60);
+        }
+
+        function showSuccessScreen() {
+            isHacked = true;
+            statusDot.style.backgroundColor = "#00ffaa";
+            lockStatusDisplay.innerText = "OVERRIDE_UNLOCKED (准許覆蓋)";
+            lockStatusDisplay.className = "success-text";
+            
+            currentUserDisplay.innerText = "SYSTEM (已取得全域覆蓋)";
+            currentUserDisplay.style.color = "#00ffaa";
+
+            [440, 554, 659, 880].forEach((f, i) => { setTimeout(() => playBeep(f, 0.3), i * 100); });
+            
+            overlayScreen.innerHTML = `
+                <div class="overlay-box" style="border-color: #00ffaa; background: #050505;">
+                    <h1 class="success-text blink" style="font-size: 2.2rem; margin-bottom: 20px;">MISSION ACCOMPLISHED</h1>
+                    <p style="font-size: 0.9rem; color: #ffffff; margin-bottom: 25px;">安全防線完全解除，覆蓋權限部署成功！</p>
+                    <div style="background: rgba(0, 30, 0, 0.6); border: 1px solid #00ffaa; padding: 15px; font-size: 13px; color: #00ffaa; font-family: monospace; text-align: left; margin-bottom: 25px;">
+                        [最高授權群組] : 未解鎖及最高權限 )<br>
+                        [覆蓋套件狀態] : COMPLETED (部署完整度 100%)<br>
+                        [隱藏提示通道] : 關閉此視窗後，返回終端機盲打特定認證指令以觸發終極授權。
+                    </div>
+                    <button class="cyber-btn" id="closeOverlayBtn" style="border-color: #00ffaa; color: #00ffaa;">返回主控制台</button>
+                </div>
+            `;
+            
+            document.getElementById('closeOverlayBtn').addEventListener('click', () => {
+                overlayScreen.style.display = 'none';
+                log(`\n>>> 核心防線已瓦解。系統偵測到未解鎖及最高權限漏洞，可嘗試執行ierhtnerhu rehbtuidhingdrnpan...\n`, 'success-text');
+            });
+        }
+    </script>
+</body>
+</html>
